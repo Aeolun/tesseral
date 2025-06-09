@@ -56,7 +56,7 @@ FROM
     organizations
     JOIN projects ON projects.organization_id = organizations.id
 WHERE
-    organization_id = $1;
+    organizations.id = $1;
 
 -- name: ListProjects :many
 SELECT

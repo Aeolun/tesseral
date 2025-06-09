@@ -15,7 +15,7 @@ func (s *Store) GetProjectIDOrganizationBacks(ctx context.Context, organizationI
 	}
 
 	orgUUID := uuid.UUID(orgID)
-	projectID, err := s.q.GetProjectIDOrganizationBacks(ctx, &orgUUID)
+	projectID, err := s.q.GetProjectIDOrganizationBacks(ctx, orgUUID)
 	if err != nil {
 		return "", fmt.Errorf("get project id organization backs: %w", err)
 	}

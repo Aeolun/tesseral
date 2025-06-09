@@ -282,6 +282,10 @@ message OnboardingCreateProjectsRequest {
 message OnboardingCreateProjectsResponse {
   string refresh_token = 1;
   string access_token = 2;
+  string dev_project_id = 3;
+  string prod_project_id = 4;
+  string dev_project_url = 5;
+  string prod_project_url = 6;
 }
 
 message CreateIntermediateSessionRequest {

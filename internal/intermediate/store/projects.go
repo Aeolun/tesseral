@@ -46,18 +46,45 @@ func (s *Store) CreateProject(ctx context.Context, req *intermediatev1.CreatePro
 	formattedNewProjectID := idformat.Project.Format(newProjectID)
 	newProjectVaultDomain := fmt.Sprintf("%s.%s", strings.ReplaceAll(formattedNewProjectID, "_", "-"), s.authAppsRootDomain)
 
-	// create a new organization under the dogfood project, accepting the same
+	// create a new project first with null organization_id
+	qProject, err := q.CreateProject(ctx, queries.CreateProjectParams{
+		ID:                  newProjectID,
+		RedirectUri:         req.RedirectUri,
+		OrganizationID:      nil, // Create without backing org first
+		VaultDomain:         newProjectVaultDomain,
+		EmailSendFromDomain: fmt.Sprintf("mail.%s", s.authAppsRootDomain),
+		DisplayName:         req.DisplayName,
+		LogInWithEmail:      true,
+		LogInWithGoogle:     false,
+		LogInWithMicrosoft:  false,
+		LogInWithPassword:   false,
+		LogInWithSaml:       false,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("create project: %w", err)
+	}
+
+	// create the backing organization under the new project, accepting the same
 	// primary login method used to get to this point
 	qOrganization, err := q.CreateOrganization(ctx, queries.CreateOrganizationParams{
 		ID:                 uuid.New(),
-		DisplayName:        fmt.Sprintf("%s Backing Organization", formattedNewProjectID),
-		ProjectID:          *s.dogfoodProjectID,
+		DisplayName:        fmt.Sprintf("%s Backing Organization", req.DisplayName),
+		ProjectID:          qProject.ID, // Create under the new project
 		LogInWithEmail:     intermediateSession.PrimaryAuthFactor == intermediatev1.PrimaryAuthFactor_PRIMARY_AUTH_FACTOR_EMAIL,
 		LogInWithGoogle:    intermediateSession.PrimaryAuthFactor == intermediatev1.PrimaryAuthFactor_PRIMARY_AUTH_FACTOR_GOOGLE,
 		LogInWithMicrosoft: intermediateSession.PrimaryAuthFactor == intermediatev1.PrimaryAuthFactor_PRIMARY_AUTH_FACTOR_MICROSOFT,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("create organization: %w", err)
+	}
+
+	// update the project to reference its backing organization
+	qProject, err = q.UpdateProjectOrganizationID(ctx, queries.UpdateProjectOrganizationIDParams{
+		ID:             qProject.ID,
+		OrganizationID: &qOrganization.ID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("update project organization id: %w", err)
 	}
 
 	// reflect the google hosted domain from the intermediate session if it exists
@@ -92,25 +119,7 @@ func (s *Store) CreateProject(ctx context.Context, req *intermediatev1.CreatePro
 		return nil, fmt.Errorf("create user invite: %w", err)
 	}
 
-	// create a new project backed by the new organization; the login methods
-	// here are only those that can work out of the box, without further
-	// configuration by the user
-	qProject, err := q.CreateProject(ctx, queries.CreateProjectParams{
-		ID:                  newProjectID,
-		RedirectUri:         req.RedirectUri,
-		OrganizationID:      &qOrganization.ID,
-		VaultDomain:         newProjectVaultDomain,
-		EmailSendFromDomain: fmt.Sprintf("mail.%s", s.authAppsRootDomain),
-		DisplayName:         req.DisplayName,
-		LogInWithEmail:      true,
-		LogInWithGoogle:     false,
-		LogInWithMicrosoft:  false,
-		LogInWithPassword:   false,
-		LogInWithSaml:       false,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("create project: %w", err)
-	}
+	// project already created above with backing organization now set
 
 	if _, err := q.CreateProjectUISettings(ctx, qProject.ID); err != nil {
 		return nil, fmt.Errorf("create project ui settings: %w", err)
@@ -271,8 +280,12 @@ func (s *Store) OnboardingCreateProjects(ctx context.Context, req *intermediatev
 	}
 
 	return &intermediatev1.OnboardingCreateProjectsResponse{
-		AccessToken:  "", // populated in service
-		RefreshToken: idformat.SessionRefreshToken.Format(refreshToken),
+		AccessToken:    "", // populated in service
+		RefreshToken:   idformat.SessionRefreshToken.Format(refreshToken),
+		DevProjectId:   idformat.Project.Format(qDevProjectID),
+		ProdProjectId:  idformat.Project.Format(qProdProjectID),
+		DevProjectUrl:  req.DevUrl,
+		ProdProjectUrl: req.ProdUrl,
 	}, nil
 }
 
@@ -318,27 +331,51 @@ func (s *Store) createProjectForCurrentUser(ctx context.Context, q *queries.Quer
 		return nil, fmt.Errorf("parse redirect uri: %w", err)
 	}
 
-	qDogfoodProject, err := q.GetProjectByID(ctx, *s.dogfoodProjectID)
+	// create a new project first with null organization_id
+	qProject, err := q.CreateProject(ctx, queries.CreateProjectParams{
+		ID:                  args.ProjectID,
+		StripeCustomerID:    args.StripeCustomerID,
+		RedirectUri:         args.RedirectURI,
+		OrganizationID:      nil, // Create without backing org first
+		VaultDomain:         newProjectVaultDomain,
+		CookieDomain:        newProjectVaultDomain,
+		EmailSendFromDomain: fmt.Sprintf("mail.%s", s.authAppsRootDomain),
+		DisplayName:         args.DisplayName,
+		LogInWithEmail:      true,
+		LogInWithGoogle:     false,
+		LogInWithMicrosoft:  false,
+		LogInWithPassword:   false,
+		LogInWithSaml:       false,
+	})
 	if err != nil {
-		return nil, fmt.Errorf("get dogfood project by id: %w", err)
+		return nil, fmt.Errorf("create project: %w", err)
 	}
 
-	// create a new organization under the dogfood project, accepting the same
+	// create the backing organization under the new project, accepting the same
 	// primary login method used to get to this point
 	qOrganization, err := q.CreateOrganization(ctx, queries.CreateOrganizationParams{
 		ID:          uuid.New(),
-		DisplayName: fmt.Sprintf("%s Backing Organization", formattedNewProjectID),
-		ProjectID:   *s.dogfoodProjectID,
+		DisplayName: fmt.Sprintf("%s Backing Organization", args.DisplayName),
+		ProjectID:   qProject.ID, // Create under the new project
 
-		// same logic as in ordinary s.CreateOrganization, but against dogfood project
-		LogInWithEmail:     qDogfoodProject.LogInWithEmail,
-		LogInWithGoogle:    qDogfoodProject.LogInWithGoogle,
-		LogInWithMicrosoft: qDogfoodProject.LogInWithMicrosoft,
-		LogInWithPassword:  qDogfoodProject.LogInWithPassword,
+		// same logic as in ordinary s.CreateOrganization, but against new project
+		LogInWithEmail:     true, // Start with email enabled for new projects
+		LogInWithGoogle:    false,
+		LogInWithMicrosoft: false,
+		LogInWithPassword:  false,
 		ScimEnabled:        false,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("create organization: %w", err)
+	}
+
+	// update the project to reference its backing organization
+	qProject, err = q.UpdateProjectOrganizationID(ctx, queries.UpdateProjectOrganizationIDParams{
+		ID:             qProject.ID,
+		OrganizationID: &qOrganization.ID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("update project organization id: %w", err)
 	}
 
 	// reflect the google hosted domain from the intermediate session if it exists
@@ -379,27 +416,7 @@ func (s *Store) createProjectForCurrentUser(ctx context.Context, q *queries.Quer
 		return nil, fmt.Errorf("create user: %w", err)
 	}
 
-	// create a new project backed by the new organization; the login methods
-	// here are only those that can work out of the box, without further
-	// configuration by the user
-	qProject, err := q.CreateProject(ctx, queries.CreateProjectParams{
-		ID:                  args.ProjectID,
-		StripeCustomerID:    args.StripeCustomerID,
-		RedirectUri:         args.RedirectURI,
-		OrganizationID:      &qOrganization.ID,
-		VaultDomain:         newProjectVaultDomain,
-		CookieDomain:        newProjectVaultDomain,
-		EmailSendFromDomain: fmt.Sprintf("mail.%s", s.authAppsRootDomain),
-		DisplayName:         args.DisplayName,
-		LogInWithEmail:      true,
-		LogInWithGoogle:     false,
-		LogInWithMicrosoft:  false,
-		LogInWithPassword:   false,
-		LogInWithSaml:       false,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("create project: %w", err)
-	}
+	// project already created above with backing organization now set
 
 	if _, err := q.CreateProjectUISettings(ctx, qProject.ID); err != nil {
 		return nil, fmt.Errorf("create project ui settings: %w", err)

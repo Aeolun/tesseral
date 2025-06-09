@@ -699,3 +699,20 @@ WHERE api_key_role_assignments.api_key_id = api_keys.id
     AND api_key_role_assignments.id = $1
     AND api_keys.organization_id = $2;
 
+-- name: ListAllSwitchableOrganizations :many
+SELECT
+    organizations.id,
+    organizations.display_name,
+    organizations.project_id
+FROM
+    organizations
+WHERE
+    EXISTS (
+        SELECT
+            1
+        FROM
+            users
+        WHERE
+            organization_id = organizations.id
+            AND users.email = $1);
+

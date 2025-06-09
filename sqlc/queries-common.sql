@@ -109,3 +109,20 @@ FROM
 WHERE
     id = $1;
 
+-- name: GetProjectsWithoutStripeCustomerID :many
+SELECT
+    id,
+    display_name
+FROM
+    projects
+WHERE
+    stripe_customer_id IS NULL;
+
+-- name: UpdateProjectStripeCustomerID :exec
+UPDATE
+    projects
+SET
+    stripe_customer_id = $2
+WHERE
+    id = $1;
+

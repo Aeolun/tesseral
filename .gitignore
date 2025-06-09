@@ -1,9 +1,12 @@
 .env
 .local/kms/data
 .local/postgres
+.local/postgres-docker
+.local/svix-postgres-docker
 .local/s3
 .local/nginx/*.pem
 node_modules
 /console/public/index.css
 /console/public/index.js
 /console/public/index.js.map
+api

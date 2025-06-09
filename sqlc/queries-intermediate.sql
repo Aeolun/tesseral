@@ -748,3 +748,58 @@ WHERE
 RETURNING
     *;
 
+-- name: UpdateProjectOrganizationID :one
+UPDATE
+    projects
+SET
+    organization_id = $2,
+    update_time = now()
+WHERE
+    id = $1
+RETURNING
+    *;
+
+-- name: ListAllOrganizationsByMatchingUser :many
+SELECT
+    organizations.*
+FROM
+    organizations
+    JOIN users ON organizations.id = users.organization_id
+WHERE (users.email = $1
+    OR (users.google_user_id IS NOT NULL
+        AND users.google_user_id = $2)
+    OR (users.microsoft_user_id IS NOT NULL
+        AND users.microsoft_user_id = $3)
+    OR (users.github_user_id IS NOT NULL
+        AND users.github_user_id = $4))
+AND NOT organizations.logins_disabled;
+
+-- name: ListAllOrganizationsByMatchingUserInvite :many
+SELECT
+    organizations.*
+FROM
+    organizations
+    JOIN user_invites ON organizations.id = user_invites.organization_id
+WHERE
+    user_invites.email = $1;
+
+-- name: ListAllOrganizationsByGoogleHostedDomain :many
+SELECT
+    organizations.*
+FROM
+    organizations
+    JOIN organization_google_hosted_domains ON organizations.id = organization_google_hosted_domains.organization_id
+WHERE
+    organization_google_hosted_domains.google_hosted_domain = $1
+    AND NOT organizations.logins_disabled;
+
+-- name: ListAllOrganizationsByMicrosoftTenantID :many
+SELECT
+    organizations.*
+FROM
+    organizations
+    JOIN organization_microsoft_tenant_ids ON organizations.id = organization_microsoft_tenant_ids.organization_id
+WHERE
+    organization_microsoft_tenant_ids.microsoft_tenant_id = $1
+    AND NOT organizations.logins_disabled;
+

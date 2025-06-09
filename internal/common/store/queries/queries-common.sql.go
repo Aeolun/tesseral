@@ -163,6 +163,41 @@ func (q *Queries) GetProjectTrustedDomains(ctx context.Context, projectID uuid.U
 	return items, nil
 }
 
+const getProjectsWithoutStripeCustomerID = `-- name: GetProjectsWithoutStripeCustomerID :many
+SELECT
+    id,
+    display_name
+FROM
+    projects
+WHERE
+    stripe_customer_id IS NULL
+`
+
+type GetProjectsWithoutStripeCustomerIDRow struct {
+	ID          uuid.UUID
+	DisplayName string
+}
+
+func (q *Queries) GetProjectsWithoutStripeCustomerID(ctx context.Context) ([]GetProjectsWithoutStripeCustomerIDRow, error) {
+	rows, err := q.db.Query(ctx, getProjectsWithoutStripeCustomerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetProjectsWithoutStripeCustomerIDRow
+	for rows.Next() {
+		var i GetProjectsWithoutStripeCustomerIDRow
+		if err := rows.Scan(&i.ID, &i.DisplayName); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getSessionDetailsByRefreshTokenSHA256 = `-- name: GetSessionDetailsByRefreshTokenSHA256 :one
 SELECT
     sessions.id AS session_id,
@@ -297,4 +332,23 @@ func (q *Queries) GetUserActions(ctx context.Context, userID uuid.UUID) ([]strin
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateProjectStripeCustomerID = `-- name: UpdateProjectStripeCustomerID :exec
+UPDATE
+    projects
+SET
+    stripe_customer_id = $2
+WHERE
+    id = $1
+`
+
+type UpdateProjectStripeCustomerIDParams struct {
+	ID               uuid.UUID
+	StripeCustomerID *string
+}
+
+func (q *Queries) UpdateProjectStripeCustomerID(ctx context.Context, arg UpdateProjectStripeCustomerIDParams) error {
+	_, err := q.db.Exec(ctx, updateProjectStripeCustomerID, arg.ID, arg.StripeCustomerID)
+	return err
 }

@@ -9,6 +9,7 @@ import {
   logout,
   whoami,
 } from '@/gen/tesseral/frontend/v1/frontend-FrontendService_connectquery';
+import { exchangeSessionForIntermediateSession } from '@/gen/tesseral/intermediate/v1/intermediate-IntermediateService_connectquery';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   BookOpen,
@@ -17,6 +18,7 @@ import {
   ChevronDown,
   LifeBuoy,
   LogOut,
+  Plus,
   Settings2,
   User,
 } from 'lucide-react';
@@ -244,12 +246,22 @@ const ConsoleNavigation: FC = () => {
 
 const NavigationProjects = () => {
   const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
 
   const { data: getProjectResponse } = useQuery(getProject, {});
   const { data: listSwitchableOrganizationsResponse } = useQuery(
     listSwitchableOrganizations,
     {},
   );
+  const { mutateAsync: exchangeSessionForIntermediateSessionAsync } = useMutation(
+    exchangeSessionForIntermediateSession,
+  );
+
+  const handleCreateProject = async () => {
+    setOpen(false);
+    await exchangeSessionForIntermediateSessionAsync({});
+    navigate('/create-organization');
+  };
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -285,6 +297,18 @@ const NavigationProjects = () => {
             </DropdownMenuItem>
           ),
         )}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem 
+          className="w-full font-medium text-sm p-2 cursor-pointer"
+          onClick={handleCreateProject}
+        >
+          <Avatar className="h-8 w-8 rounded-full">
+            <AvatarFallback className="rounded-full bg-muted-foreground/15 text-muted-foreground font-semibold">
+              <Plus className="h-4 w-4" />
+            </AvatarFallback>
+          </Avatar>
+          Create new project
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

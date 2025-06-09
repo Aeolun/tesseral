@@ -10,6 +10,11 @@ then
   brew install go
 fi
 
+if ! command -v buf 2>&1 > /dev/null
+then
+  brew install bufbuild/buf/buf
+fi
+
 if ! command -v sqlc 2>&1 >/dev/null
 then
   brew install sqlc

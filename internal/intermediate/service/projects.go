@@ -5,8 +5,9 @@ import (
 	"fmt"
 
 	"connectrpc.com/connect"
-	"github.com/tesseral-labs/tesseral/internal/intermediate/authn"
+	"github.com/google/uuid"
 	intermediatev1 "github.com/tesseral-labs/tesseral/internal/intermediate/gen/tesseral/intermediate/v1"
+	"github.com/tesseral-labs/tesseral/internal/store/idformat"
 )
 
 func (s *Service) CreateProject(ctx context.Context, req *connect.Request[intermediatev1.CreateProjectRequest]) (*connect.Response[intermediatev1.CreateProjectResponse], error) {
@@ -31,17 +32,24 @@ func (s *Service) OnboardingCreateProjects(ctx context.Context, req *connect.Req
 
 	res.AccessToken = accessToken
 
-	expiredIntermediateAccessTokenCookie, err := s.Cookier.ExpiredIntermediateAccessToken(ctx, authn.ProjectID(ctx))
+	// Parse the prod project ID from the response to use for cookies
+	prodProjectID, err := idformat.Project.Parse(res.ProdProjectId)
+	if err != nil {
+		return nil, fmt.Errorf("parse prod project id: %w", err)
+	}
+	prodProjectUUID := uuid.UUID(prodProjectID)
+
+	expiredIntermediateAccessTokenCookie, err := s.Cookier.ExpiredIntermediateAccessToken(ctx, prodProjectUUID)
 	if err != nil {
 		return nil, fmt.Errorf("create expired intermediate access token cookie: %w", err)
 	}
 
-	refreshTokenCookie, err := s.Cookier.NewRefreshToken(ctx, authn.ProjectID(ctx), res.RefreshToken)
+	refreshTokenCookie, err := s.Cookier.NewRefreshToken(ctx, prodProjectUUID, res.RefreshToken)
 	if err != nil {
 		return nil, fmt.Errorf("issue refresh token cookie: %w", err)
 	}
 
-	accessTokenCookie, err := s.Cookier.NewAccessToken(ctx, authn.ProjectID(ctx), accessToken)
+	accessTokenCookie, err := s.Cookier.NewAccessToken(ctx, prodProjectUUID, accessToken)
 	if err != nil {
 		return nil, fmt.Errorf("issue access token cookie: %w", err)
 	}

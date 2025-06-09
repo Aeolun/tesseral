@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 
 	"connectrpc.com/connect"
@@ -109,6 +110,7 @@ func main() {
 		TesseralDNSCloudflareZoneID         string        `conf:"tesseral_dns_cloudflare_zone_id,noredact"`
 		StripeAPIKey                        string        `conf:"stripe_api_key"`
 		StripePriceIDGrowthTier             string        `conf:"stripe_price_id_growth_tier,noredact"`
+		SvixServerUrl                       string        `conf:"svix_server_url,noredact"`
 		SvixApiKey                          string        `conf:"svix_api_key,noredact"`
 	}{
 		PageEncodingValue: "0000000000000000000000000000000000000000000000000000000000000000",
@@ -160,12 +162,30 @@ func main() {
 		}
 	})
 
-	svixClient, err := svix.New(config.SvixApiKey, nil)
+	var svixUrl *url.URL
+	if config.SvixServerUrl != "" {
+		svixUrl, err = url.Parse(config.SvixServerUrl)
+
+		slog.Info("svix connecting to specified server", "server", svixUrl.String())
+		if err != nil {
+			panic(fmt.Errorf("url defined as svix host can't be parsed: %w", err))
+		}
+	}
+
+	svixClient, err := svix.New(config.SvixApiKey, &svix.SvixOptions{
+		ServerUrl: svixUrl,
+	})
 	if err != nil {
 		panic(fmt.Errorf("create svix client: %w", err))
 	}
 
-	stripeClient := stripeclient.New(config.StripeAPIKey, nil)
+	var stripeClient *stripeclient.API
+	if config.StripeAPIKey != "" {
+		stripeClient = stripeclient.New(config.StripeAPIKey, nil)
+		slog.Info("stripe client initialized", "api_key_configured", true)
+	} else {
+		slog.Info("stripe client not initialized", "api_key_configured", false, "reason", "STRIPE_API_KEY environment variable not set")
+	}
 
 	commonStore := commonstore.New(commonstore.NewStoreParams{
 		AppAuthRootDomain:         config.AuthAppsRootDomain,
@@ -173,6 +193,12 @@ func main() {
 		KMS:                       kms_,
 		SessionSigningKeyKMSKeyID: config.SessionKMSKeyID,
 	})
+
+	// Bootstrap Stripe customer IDs for projects that don't have them
+	// This is particularly useful for development environments with seeded data
+	if err := commonStore.BootstrapStripeCustomerIDs(context.Background(), stripeClient); err != nil {
+		slog.Warn("failed to bootstrap stripe customer ids", "error", err)
+	}
 
 	cookier := cookies.Cookier{Store: commonStore}
 

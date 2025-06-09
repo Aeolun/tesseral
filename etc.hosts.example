@@ -1,18 +1,22 @@
 # Tesseral Local Dev Entries
 
 127.0.0.1 api.tesseral.example.com
+127.0.0.1 smtp.tesseral.example.com
 127.0.0.1 config.tesseral.example.com
 127.0.0.1 vault.console.tesseral.example.com
 127.0.0.1 console.tesseral.example.com
 127.0.0.1 tesseralusercontent.example.com
+127.0.0.1 svix.tesseral.example.com
+127.0.0.1 svix-ui.tesseral.example.com
+127.0.0.1 webhooks.tesseral.example.com
 
 127.0.0.1 project-54vwf0clhh0caqe20eujxgpeq.tesseral.example.app
 127.0.0.1 project-79ldwwwzybn66dxa91udi7mn3.tesseral.example.app
 127.0.0.1 project-269wse1l6u0jnvs8afpq44f6v.tesseral.example.app
 127.0.0.1 project-8cu705zczqtcndc3c1mvgnoxc.tesseral.example.app
 
-127.0.0.1 app.company1.example.com
-127.0.0.1 vault.app.company1.example.com
-127.0.0.1 company2.example.com
-127.0.0.1 vault.company2.example.com
-127.0.0.1 app.company3.example.com
+127.0.0.1 app.sluck.example.com
+127.0.0.1 vault.app.sluck.example.com
+127.0.0.1 joracloud.example.com
+127.0.0.1 vault.joracloud.example.com
+127.0.0.1 app.arcticws.example.com

@@ -12,13 +12,30 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    environment:
-      API_DB_DSN: "postgres://postgres:password@postgres:5432/postgres"
     env_file:
       - .env
     ports:
       - "3001:3001"
     tty: true
+  postgres:
+    image: postgres:15.8
+    environment:
+      POSTGRES_PASSWORD: "password"
+      POSTGRES_DB: "tesseral"
+    expose:
+      - 5432
+    ports:
+      - "5433:5432"  # Use a different port to avoid conflict with your local Postgres
+    healthcheck:
+      test:
+        ["CMD-SHELL", "PGPASSWORD=password pg_isready -U postgres -d postgres"]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
+    volumes:
+      - ./.local/postgres-docker:/var/lib/postgresql/data
+      - ./.local/tmp:/tmp/local
   console:
     command: bash -c "npm i --force && npm run dev"
     env_file:
@@ -53,24 +70,6 @@ services:
     restart: always
     volumes:
       - ./.local/nginx:/etc/nginx/conf.d
-  postgres:
-    image: postgres:15.8
-    environment:
-      POSTGRES_PASSWORD: "password"
-    expose:
-      - 5432
-    ports:
-      - "5432:5432"
-    healthcheck:
-      test:
-        ["CMD-SHELL", "PGPASSWORD=password pg_isready -U postgres -d postgres"]
-      interval: 10s
-      retries: 5
-      start_period: 30s
-      timeout: 10s
-    volumes:
-      - ./.local/postgres:/var/lib/postgresql/data
-      - ./.local/tmp:/tmp/local
   s3:
     image: adobe/s3mock:latest
     environment:
@@ -106,3 +105,65 @@ services:
     volumes:
       - ./vault-ui:/vault-ui:cached
     working_dir: /vault-ui
+  smtp:
+    image: maildev/maildev
+    expose:
+      - 1025
+    ports:
+      - "1080:1080"
+
+  # svix
+  svix:
+    image: svix/svix-server
+    environment:
+      WAIT_FOR: "true"  # We want to wait for the default services
+      SVIX_REDIS_DSN: "redis://redis:6379"
+      SVIX_DB_DSN: "postgresql://postgres:password@svix_postgres/svix"
+      SVIX_JWT_SECRET: "d883js80osdfjshk2332423adsfahj3x"
+      SVIX_WHITELIST_SUBNETS: "[172.0.0.0/8]"
+    expose:
+      - 8071
+    ports:
+      - "8071:8071"
+    depends_on:
+    - svix_postgres
+    - redis
+  svix_ui:
+    image: aeolun/svix-ui
+    env_file:
+      - .env
+    ports:
+      - "4700:80"
+
+  svix_postgres:
+    image: postgres:15.8
+    environment:
+      POSTGRES_PASSWORD: "password"
+      POSTGRES_DB: "svix"
+    expose:
+      - 5432
+    ports:
+      - "5434:5432"  # Use a different port to avoid conflict with your local Postgres
+    healthcheck:
+      test:
+        ["CMD-SHELL", "PGPASSWORD=password pg_isready -U postgres -d postgres"]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
+    volumes:
+      - ./.local/svix-postgres-docker:/var/lib/postgresql/data
+      - ./.local/tmp:/tmp/local
+  redis:
+    image: "docker.io/redis:7-alpine"
+    # Enable persistence
+    command: "--save 60 500 --appendonly yes --appendfsync everysec"
+    volumes:
+      - "redis-data:/data"
+  webhook-tester:
+    image: tarampampam/webhook-tester
+    expose:
+      - 8080
+
+volumes:
+  redis-data:

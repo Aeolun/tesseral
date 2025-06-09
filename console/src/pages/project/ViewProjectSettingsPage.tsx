@@ -109,7 +109,7 @@ export const ViewProjectSettingsPage = () => {
         </PageTitle>
         <PageCodeSubtitle>{getProjectResponse?.project?.id}</PageCodeSubtitle>
         <PageDescription>
-          Everything you do in Tesseral happens inside a Project.
+          Configure your authentication system settings, domains, login methods, and integrations.
         </PageDescription>
       </PageHeader>
       <PageContent>

@@ -1,8 +1,13 @@
 import { timestampDate } from "@bufbuild/protobuf/wkt";
+import { Code, ConnectError } from "@connectrpc/connect";
 import { useMutation, useQuery } from "@connectrpc/connect-query";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { DateTime } from "luxon";
+import { LoaderCircleIcon } from "lucide-react";
 import React, { useState } from "react";
+import { useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { z } from "zod";
 
 import {
   AlertDialog,
@@ -23,10 +28,29 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import {
   deleteMyPasskey,
   getPasskeyOptions,
   listMyPasskeys,
   registerPasskey,
+  setPassword,
   whoami,
 } from "@/gen/tesseral/frontend/v1/frontend-FrontendService_connectquery";
 import { base64urlEncode } from "@/lib/utils";
@@ -46,8 +70,19 @@ export function UserSettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="text-sm font-medium">Email</div>
-          <div className="text-sm">{whoamiResponse?.user?.email}</div>
+          <div className="space-y-4">
+            <div>
+              <div className="text-sm font-medium">Email</div>
+              <div className="text-sm">{whoamiResponse?.user?.email}</div>
+            </div>
+            <div className="flex justify-between items-center">
+              <div>
+                <div className="text-sm font-medium">Password</div>
+                <div className="text-sm">••••••••</div>
+              </div>
+              <ChangePasswordButton />
+            </div>
+          </div>
         </CardContent>
       </Card>
       <Card>
@@ -240,3 +275,140 @@ const AAGUIDS: Record<string, string> = {
   "de503f9c-21a4-4f76-b4b7-558eb55c6f89": "Devolutions",
   "22248c4c-7a12-46e2-9a41-44291b373a4d": "LogMeOnce",
 };
+
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: z.string().min(1, "New password is required"),
+  confirmPassword: z.string().min(1, "Please confirm your new password"),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+
+function ChangePasswordButton() {
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  
+  const form = useForm<z.infer<typeof changePasswordSchema>>({
+    resolver: zodResolver(changePasswordSchema),
+    defaultValues: {
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    },
+  });
+
+  const { mutateAsync: setPasswordAsync } = useMutation(setPassword);
+
+  async function handleSubmit(values: z.infer<typeof changePasswordSchema>) {
+    setSubmitting(true);
+
+    try {
+      await setPasswordAsync({
+        password: values.newPassword,
+      });
+      
+      toast.success("Password changed successfully");
+      setDialogOpen(false);
+      form.reset();
+    } catch (e) {
+      if (
+        e instanceof ConnectError &&
+        e.code === Code.FailedPrecondition &&
+        e.rawMessage === "password_compromised"
+      ) {
+        form.setError("newPassword", {
+          type: "manual",
+          message:
+            "This password has been reported as compromised. Please choose a different password.",
+        });
+        return;
+      }
+      
+      throw e;
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline">Change Password</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Change Password</DialogTitle>
+          <DialogDescription>
+            Update your account password. Choose a strong, unique password.
+          </DialogDescription>
+        </DialogHeader>
+        
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="currentPassword"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Current Password</FormLabel>
+                  <FormControl>
+                    <Input type="password" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="newPassword"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>New Password</FormLabel>
+                  <FormControl>
+                    <Input type="password" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="confirmPassword"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Confirm New Password</FormLabel>
+                  <FormControl>
+                    <Input type="password" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setDialogOpen(false);
+                  form.reset();
+                }}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={submitting}>
+                {submitting && (
+                  <LoaderCircleIcon className="h-4 w-4 animate-spin mr-2" />
+                )}
+                Change Password
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}

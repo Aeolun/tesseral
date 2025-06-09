@@ -1451,12 +1451,11 @@ FROM
     organizations
     JOIN projects ON projects.organization_id = organizations.id
 WHERE
-    organization_id = $1
+    organizations.id = $1
 `
 
-func (q *Queries) GetProjectIDOrganizationBacks(ctx context.Context, organizationID *uuid.UUID) (uuid.UUID, error) {
-	row := q.db.QueryRow(ctx, getProjectIDOrganizationBacks, organizationID)
-	var id uuid.UUID
+func (q *Queries) GetProjectIDOrganizationBacks(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, getProjectIDOrganizationBacks, id)
 	err := row.Scan(&id)
 	return id, err
 }

@@ -1,3 +1,13 @@
+# Load environment variables from .env file
+ifneq (,$(wildcard .env))
+include .env
+export
+endif
+
+# Use API_DB_DSN from .env or fall back to default
+DB_DSN ?= $(LOCAL_DB_DSN)
+DB_DSN ?= postgres://postgres:postgres@localhost:5433/tesseral?sslmode=disable
+
 .PHONY: bootstrap
 bootstrap:
 	@# Shut down and clear out any local postgres state
@@ -8,16 +18,28 @@ bootstrap:
 	@# Start the database docker container
 	docker compose up -d --wait postgres
 	@# Wait for the database to be ready
-	@until PGPASSWORD=password psql "postgres://postgres:password@localhost:5432?sslmode=disable" -c "SELECT 1" >/dev/null 2>&1; do \
+	@until psql "$(DB_DSN)" -c "SELECT 1" >/dev/null 2>&1; do \
 		echo "PostgreSQL is unavailable - retrying..."; \
 		sleep 2; \
 	done
 	@# Run database migrations
 	make migrate up
 	@# Seed the database
-	psql "postgres://postgres:password@localhost:5432?sslmode=disable" -f .local/db/seed.sql
+	psql "$(DB_DSN)" -f .local/db/seed.sql
 	@# Stop the docker containers
 	docker compose stop postgres
+
+.PHONY: seed
+seed:
+	psql "$(DB_DSN)" -f .local/db/seed.sql
+
+.PHONY: cleanup
+cleanup:
+	psql "$(DB_DSN)" -f .local/db/cleanup.sql
+
+.PHONY: hosts
+hosts:
+	./bin/update-hosts
 
 .PHONY: dev
 dev:
@@ -26,7 +48,7 @@ dev:
 .PHONY: migrate
 ARGS = $(wordlist 2, $(words $(MAKECMDGOALS)), $(MAKECMDGOALS))
 migrate:
-	migrate -path cmd/openauthctl/migrations -database "postgres://postgres:password@localhost:5432?sslmode=disable" $(ARGS)
+	migrate -path cmd/openauthctl/migrations -database "$(DB_DSN)" $(ARGS)
 %:
 	@:
 

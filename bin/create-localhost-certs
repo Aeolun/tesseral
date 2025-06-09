@@ -6,15 +6,19 @@ create_cert() {
 
 create_cert "api.tesseral.example.com"
 create_cert "config.tesseral.example.com"
+create_cert "smtp.tesseral.example.com"
 create_cert "console.tesseral.example.com"
 create_cert "vault.console.tesseral.example.com"
 create_cert "*.tesseral.example.app"
 create_cert "tesseralusercontent.example.com"
+create_cert "webhooks.tesseral.example.com"
+create_cert "svix.tesseral.example.com"
+create_cert "svix-ui.tesseral.example.com"
 
-create_cert "app.company1.example.com"
-create_cert "vault.app.company1.example.com"
+create_cert "app.sluck.example.com"
+create_cert "vault.app.sluck.example.com"
 
-create_cert "company2.example.com"
-create_cert "vault.company2.example.com"
+create_cert "joracloud.example.com"
+create_cert "vault.joracloud.example.com"
 
-create_cert "app.company3.example.com"
+create_cert "app.arcticws.example.com"

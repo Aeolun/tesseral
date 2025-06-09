@@ -1476,6 +1476,222 @@ func (q *Queries) InvalidateSession(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
+const listAllOrganizationsByGoogleHostedDomain = `-- name: ListAllOrganizationsByGoogleHostedDomain :many
+SELECT
+    organizations.id, organizations.project_id, organizations.display_name, organizations.scim_enabled, organizations.create_time, organizations.update_time, organizations.logins_disabled, organizations.log_in_with_google, organizations.log_in_with_microsoft, organizations.log_in_with_password, organizations.log_in_with_authenticator_app, organizations.log_in_with_passkey, organizations.require_mfa, organizations.log_in_with_email, organizations.log_in_with_saml, organizations.custom_roles_enabled, organizations.log_in_with_github, organizations.api_keys_enabled
+FROM
+    organizations
+    JOIN organization_google_hosted_domains ON organizations.id = organization_google_hosted_domains.organization_id
+WHERE
+    organization_google_hosted_domains.google_hosted_domain = $1
+    AND NOT organizations.logins_disabled
+`
+
+func (q *Queries) ListAllOrganizationsByGoogleHostedDomain(ctx context.Context, googleHostedDomain string) ([]Organization, error) {
+	rows, err := q.db.Query(ctx, listAllOrganizationsByGoogleHostedDomain, googleHostedDomain)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Organization
+	for rows.Next() {
+		var i Organization
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.DisplayName,
+			&i.ScimEnabled,
+			&i.CreateTime,
+			&i.UpdateTime,
+			&i.LoginsDisabled,
+			&i.LogInWithGoogle,
+			&i.LogInWithMicrosoft,
+			&i.LogInWithPassword,
+			&i.LogInWithAuthenticatorApp,
+			&i.LogInWithPasskey,
+			&i.RequireMfa,
+			&i.LogInWithEmail,
+			&i.LogInWithSaml,
+			&i.CustomRolesEnabled,
+			&i.LogInWithGithub,
+			&i.ApiKeysEnabled,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listAllOrganizationsByMatchingUser = `-- name: ListAllOrganizationsByMatchingUser :many
+SELECT
+    organizations.id, organizations.project_id, organizations.display_name, organizations.scim_enabled, organizations.create_time, organizations.update_time, organizations.logins_disabled, organizations.log_in_with_google, organizations.log_in_with_microsoft, organizations.log_in_with_password, organizations.log_in_with_authenticator_app, organizations.log_in_with_passkey, organizations.require_mfa, organizations.log_in_with_email, organizations.log_in_with_saml, organizations.custom_roles_enabled, organizations.log_in_with_github, organizations.api_keys_enabled
+FROM
+    organizations
+    JOIN users ON organizations.id = users.organization_id
+WHERE (users.email = $1
+    OR (users.google_user_id IS NOT NULL
+        AND users.google_user_id = $2)
+    OR (users.microsoft_user_id IS NOT NULL
+        AND users.microsoft_user_id = $3)
+    OR (users.github_user_id IS NOT NULL
+        AND users.github_user_id = $4))
+AND NOT organizations.logins_disabled
+`
+
+type ListAllOrganizationsByMatchingUserParams struct {
+	Email           string
+	GoogleUserID    *string
+	MicrosoftUserID *string
+	GithubUserID    *string
+}
+
+func (q *Queries) ListAllOrganizationsByMatchingUser(ctx context.Context, arg ListAllOrganizationsByMatchingUserParams) ([]Organization, error) {
+	rows, err := q.db.Query(ctx, listAllOrganizationsByMatchingUser,
+		arg.Email,
+		arg.GoogleUserID,
+		arg.MicrosoftUserID,
+		arg.GithubUserID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Organization
+	for rows.Next() {
+		var i Organization
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.DisplayName,
+			&i.ScimEnabled,
+			&i.CreateTime,
+			&i.UpdateTime,
+			&i.LoginsDisabled,
+			&i.LogInWithGoogle,
+			&i.LogInWithMicrosoft,
+			&i.LogInWithPassword,
+			&i.LogInWithAuthenticatorApp,
+			&i.LogInWithPasskey,
+			&i.RequireMfa,
+			&i.LogInWithEmail,
+			&i.LogInWithSaml,
+			&i.CustomRolesEnabled,
+			&i.LogInWithGithub,
+			&i.ApiKeysEnabled,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listAllOrganizationsByMatchingUserInvite = `-- name: ListAllOrganizationsByMatchingUserInvite :many
+SELECT
+    organizations.id, organizations.project_id, organizations.display_name, organizations.scim_enabled, organizations.create_time, organizations.update_time, organizations.logins_disabled, organizations.log_in_with_google, organizations.log_in_with_microsoft, organizations.log_in_with_password, organizations.log_in_with_authenticator_app, organizations.log_in_with_passkey, organizations.require_mfa, organizations.log_in_with_email, organizations.log_in_with_saml, organizations.custom_roles_enabled, organizations.log_in_with_github, organizations.api_keys_enabled
+FROM
+    organizations
+    JOIN user_invites ON organizations.id = user_invites.organization_id
+WHERE
+    user_invites.email = $1
+`
+
+func (q *Queries) ListAllOrganizationsByMatchingUserInvite(ctx context.Context, email string) ([]Organization, error) {
+	rows, err := q.db.Query(ctx, listAllOrganizationsByMatchingUserInvite, email)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Organization
+	for rows.Next() {
+		var i Organization
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.DisplayName,
+			&i.ScimEnabled,
+			&i.CreateTime,
+			&i.UpdateTime,
+			&i.LoginsDisabled,
+			&i.LogInWithGoogle,
+			&i.LogInWithMicrosoft,
+			&i.LogInWithPassword,
+			&i.LogInWithAuthenticatorApp,
+			&i.LogInWithPasskey,
+			&i.RequireMfa,
+			&i.LogInWithEmail,
+			&i.LogInWithSaml,
+			&i.CustomRolesEnabled,
+			&i.LogInWithGithub,
+			&i.ApiKeysEnabled,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listAllOrganizationsByMicrosoftTenantID = `-- name: ListAllOrganizationsByMicrosoftTenantID :many
+SELECT
+    organizations.id, organizations.project_id, organizations.display_name, organizations.scim_enabled, organizations.create_time, organizations.update_time, organizations.logins_disabled, organizations.log_in_with_google, organizations.log_in_with_microsoft, organizations.log_in_with_password, organizations.log_in_with_authenticator_app, organizations.log_in_with_passkey, organizations.require_mfa, organizations.log_in_with_email, organizations.log_in_with_saml, organizations.custom_roles_enabled, organizations.log_in_with_github, organizations.api_keys_enabled
+FROM
+    organizations
+    JOIN organization_microsoft_tenant_ids ON organizations.id = organization_microsoft_tenant_ids.organization_id
+WHERE
+    organization_microsoft_tenant_ids.microsoft_tenant_id = $1
+    AND NOT organizations.logins_disabled
+`
+
+func (q *Queries) ListAllOrganizationsByMicrosoftTenantID(ctx context.Context, microsoftTenantID string) ([]Organization, error) {
+	rows, err := q.db.Query(ctx, listAllOrganizationsByMicrosoftTenantID, microsoftTenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Organization
+	for rows.Next() {
+		var i Organization
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.DisplayName,
+			&i.ScimEnabled,
+			&i.CreateTime,
+			&i.UpdateTime,
+			&i.LoginsDisabled,
+			&i.LogInWithGoogle,
+			&i.LogInWithMicrosoft,
+			&i.LogInWithPassword,
+			&i.LogInWithAuthenticatorApp,
+			&i.LogInWithPasskey,
+			&i.RequireMfa,
+			&i.LogInWithEmail,
+			&i.LogInWithSaml,
+			&i.CustomRolesEnabled,
+			&i.LogInWithGithub,
+			&i.ApiKeysEnabled,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listOrganizationsByGoogleHostedDomain = `-- name: ListOrganizationsByGoogleHostedDomain :many
 SELECT
     organizations.id, organizations.project_id, organizations.display_name, organizations.scim_enabled, organizations.create_time, organizations.update_time, organizations.logins_disabled, organizations.log_in_with_google, organizations.log_in_with_microsoft, organizations.log_in_with_password, organizations.log_in_with_authenticator_app, organizations.log_in_with_passkey, organizations.require_mfa, organizations.log_in_with_email, organizations.log_in_with_saml, organizations.custom_roles_enabled, organizations.log_in_with_github, organizations.api_keys_enabled
@@ -3169,6 +3385,63 @@ func (q *Queries) UpdateIntermediateSessionRegisterPasskey(ctx context.Context, 
 		&i.GithubOauthStateSha256,
 		&i.RedirectUri,
 		&i.ReturnRelayedSessionTokenAsQueryParam,
+	)
+	return i, err
+}
+
+const updateProjectOrganizationID = `-- name: UpdateProjectOrganizationID :one
+UPDATE
+    projects
+SET
+    organization_id = $2,
+    update_time = now()
+WHERE
+    id = $1
+RETURNING
+    id, organization_id, log_in_with_password, log_in_with_google, log_in_with_microsoft, google_oauth_client_id, microsoft_oauth_client_id, google_oauth_client_secret_ciphertext, microsoft_oauth_client_secret_ciphertext, display_name, create_time, update_time, logins_disabled, log_in_with_authenticator_app, log_in_with_passkey, log_in_with_email, log_in_with_saml, redirect_uri, after_login_redirect_uri, after_signup_redirect_uri, vault_domain, email_send_from_domain, cookie_domain, email_quota_daily, stripe_customer_id, entitled_custom_vault_domains, entitled_backend_api_keys, log_in_with_github, github_oauth_client_id, github_oauth_client_secret_ciphertext, api_keys_enabled, api_key_secret_token_prefix
+`
+
+type UpdateProjectOrganizationIDParams struct {
+	ID             uuid.UUID
+	OrganizationID *uuid.UUID
+}
+
+func (q *Queries) UpdateProjectOrganizationID(ctx context.Context, arg UpdateProjectOrganizationIDParams) (Project, error) {
+	row := q.db.QueryRow(ctx, updateProjectOrganizationID, arg.ID, arg.OrganizationID)
+	var i Project
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizationID,
+		&i.LogInWithPassword,
+		&i.LogInWithGoogle,
+		&i.LogInWithMicrosoft,
+		&i.GoogleOauthClientID,
+		&i.MicrosoftOauthClientID,
+		&i.GoogleOauthClientSecretCiphertext,
+		&i.MicrosoftOauthClientSecretCiphertext,
+		&i.DisplayName,
+		&i.CreateTime,
+		&i.UpdateTime,
+		&i.LoginsDisabled,
+		&i.LogInWithAuthenticatorApp,
+		&i.LogInWithPasskey,
+		&i.LogInWithEmail,
+		&i.LogInWithSaml,
+		&i.RedirectUri,
+		&i.AfterLoginRedirectUri,
+		&i.AfterSignupRedirectUri,
+		&i.VaultDomain,
+		&i.EmailSendFromDomain,
+		&i.CookieDomain,
+		&i.EmailQuotaDaily,
+		&i.StripeCustomerID,
+		&i.EntitledCustomVaultDomains,
+		&i.EntitledBackendApiKeys,
+		&i.LogInWithGithub,
+		&i.GithubOauthClientID,
+		&i.GithubOauthClientSecretCiphertext,
+		&i.ApiKeysEnabled,
+		&i.ApiKeySecretTokenPrefix,
 	)
 	return i, err
 }

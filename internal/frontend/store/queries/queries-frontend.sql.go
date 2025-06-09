@@ -1556,6 +1556,50 @@ func (q *Queries) ListAllAPIKeyRoleAssignments(ctx context.Context, arg ListAllA
 	return items, nil
 }
 
+const listAllSwitchableOrganizations = `-- name: ListAllSwitchableOrganizations :many
+SELECT
+    organizations.id,
+    organizations.display_name,
+    organizations.project_id
+FROM
+    organizations
+WHERE
+    EXISTS (
+        SELECT
+            1
+        FROM
+            users
+        WHERE
+            organization_id = organizations.id
+            AND users.email = $1)
+`
+
+type ListAllSwitchableOrganizationsRow struct {
+	ID          uuid.UUID
+	DisplayName string
+	ProjectID   uuid.UUID
+}
+
+func (q *Queries) ListAllSwitchableOrganizations(ctx context.Context, email string) ([]ListAllSwitchableOrganizationsRow, error) {
+	rows, err := q.db.Query(ctx, listAllSwitchableOrganizations, email)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListAllSwitchableOrganizationsRow
+	for rows.Next() {
+		var i ListAllSwitchableOrganizationsRow
+		if err := rows.Scan(&i.ID, &i.DisplayName, &i.ProjectID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPasskeys = `-- name: ListPasskeys :many
 SELECT
     id, user_id, create_time, update_time, credential_id, public_key, aaguid, disabled, rp_id

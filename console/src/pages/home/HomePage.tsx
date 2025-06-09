@@ -127,7 +127,7 @@ export function HomePage() {
               </CardHeader>
               <CardContent>
                 <CardDescription className="text-sm text-muted-foreground">
-                  Manage your Tesseral implementation.
+                  Configure your authentication project and settings.
                 </CardDescription>
               </CardContent>
               <CardFooter>
@@ -148,7 +148,7 @@ export function HomePage() {
               </CardHeader>
               <CardContent>
                 <CardDescription className="text-sm text-muted-foreground">
-                  Manage your organizations and their users.
+                  Manage tenant organizations using your authentication service.
                 </CardDescription>
               </CardContent>
               <CardFooter>

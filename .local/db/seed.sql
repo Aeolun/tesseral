@@ -1,8 +1,8 @@
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- Create the Dogfood Project
-INSERT INTO projects (id, display_name, log_in_with_google, log_in_with_microsoft, log_in_with_email, log_in_with_password, log_in_with_saml, log_in_with_authenticator_app, log_in_with_passkey, vault_domain, email_send_from_domain, redirect_uri, cookie_domain)
-	VALUES ('56bfa2b3-4f5a-4c68-8fc5-db3bf20731a2'::uuid, 'Tesseral Local Development', true, true, true, true, true, true, true, 'vault.console.tesseral.example.com', 'vault.console.tesseral.example.com', 'https://console.tesseral.example.com', 'console.tesseral.example.com');
+INSERT INTO projects (id, display_name, log_in_with_google, log_in_with_microsoft, log_in_with_email, log_in_with_password, log_in_with_saml, log_in_with_authenticator_app, log_in_with_passkey, vault_domain, email_send_from_domain, redirect_uri, cookie_domain, entitled_backend_api_keys, entitled_custom_vault_domains)
+	VALUES ('56bfa2b3-4f5a-4c68-8fc5-db3bf20731a2'::uuid, 'Tesseral Local Development', true, true, true, true, true, true, true, 'vault.console.tesseral.example.com', 'vault.console.tesseral.example.com', 'https://console.tesseral.example.com', 'console.tesseral.example.com', true, true);
 
 insert into project_trusted_domains (id, project_id, domain)
 VALUES
@@ -12,7 +12,7 @@ VALUES
 
 -- Create the Dogfood Project's backing organization
 INSERT INTO organizations (id, display_name, project_id, log_in_with_google, log_in_with_microsoft, log_in_with_email, log_in_with_password, log_in_with_saml, log_in_with_authenticator_app, log_in_with_passkey, scim_enabled)
-  VALUES ('7a76decb-6d79-49ce-9449-34fcc53151df'::uuid, 'project_54vwf0clhh0caqe20eujxgpeq Backing Organization', '56bfa2b3-4f5a-4c68-8fc5-db3bf20731a2', true, false, true, true, true, true, true, true);
+  VALUES ('7a76decb-6d79-49ce-9449-34fcc53151df'::uuid, 'Tesseral Internal', '56bfa2b3-4f5a-4c68-8fc5-db3bf20731a2', true, false, true, true, true, true, true, true);
 
 UPDATE projects SET organization_id = '7a76decb-6d79-49ce-9449-34fcc53151df'::uuid where id = '56bfa2b3-4f5a-4c68-8fc5-db3bf20731a2'::uuid;
 
@@ -38,31 +38,31 @@ INSERT INTO session_signing_keys (id, project_id, public_key, private_key_cipher
     (SELECT NOW() + INTERVAL '1 year')
   );
 
--- Create company1's project
+-- Create Sluck's project
 insert into projects (id, log_in_with_email, log_in_with_password, log_in_with_google, log_in_with_microsoft, display_name, vault_domain, email_send_from_domain, redirect_uri, cookie_domain)
-    values ('7abd6d2e-c314-456e-b9c5-bdbb62f0345f'::uuid, true, false, false, false, 'Company One', 'vault.app.company1.example.com', 'vault.app.company1.example.com', 'http://app.company1.example.com', 'app.company1.example.com');
+    values ('7abd6d2e-c314-456e-b9c5-bdbb62f0345f'::uuid, true, false, false, false, 'Sluck', 'vault.app.sluck.example.com', 'vault.app.sluck.example.com', 'http://app.sluck.example.com', 'app.sluck.example.com');
 
 insert into project_trusted_domains (id, project_id, domain)
 VALUES
     (gen_random_uuid(), '7abd6d2e-c314-456e-b9c5-bdbb62f0345f', 'project-79ldwwwzybn66dxa91udi7mn3.tesseral.example.app'),
-    (gen_random_uuid(), '7abd6d2e-c314-456e-b9c5-bdbb62f0345f', 'vault.app.company1.example.com'),
-    (gen_random_uuid(), '7abd6d2e-c314-456e-b9c5-bdbb62f0345f', 'app.company1.example.com');
+    (gen_random_uuid(), '7abd6d2e-c314-456e-b9c5-bdbb62f0345f', 'vault.app.sluck.example.com'),
+    (gen_random_uuid(), '7abd6d2e-c314-456e-b9c5-bdbb62f0345f', 'app.sluck.example.com');
 
--- Create company1's project's backing organization
+-- Create Sluck's project's backing organization
 INSERT INTO organizations (id, display_name, project_id, log_in_with_saml, scim_enabled, log_in_with_email)
-VALUES ('8648d50b-baa1-4929-be0f-bc7238f685ab'::uuid, 'project_79ldwwwzybn66dxa91udi7mn3 Backing Organization', '56bfa2b3-4f5a-4c68-8fc5-db3bf20731a2', false, false, true);
+VALUES ('8648d50b-baa1-4929-be0f-bc7238f685ab'::uuid, 'Sluck', '7abd6d2e-c314-456e-b9c5-bdbb62f0345f', false, false, true);
 
 update projects set organization_id = '8648d50b-baa1-4929-be0f-bc7238f685ab'::uuid where id = '7abd6d2e-c314-456e-b9c5-bdbb62f0345f'::uuid;
 
--- Create project UI settings for company1's project
+-- Create project UI settings for Sluck's project
 INSERT INTO project_ui_settings (id, project_id)
   VALUES (gen_random_uuid(), '7abd6d2e-c314-456e-b9c5-bdbb62f0345f'::uuid);
 
--- Create a user in company1
+-- Create a user in Sluck
 INSERT INTO users (id, email, password_bcrypt, organization_id, is_owner)
-VALUES (gen_random_uuid(), 'user1@company1.example.com', crypt('password', gen_salt('bf', 14)), '8648d50b-baa1-4929-be0f-bc7238f685ab', true);
+VALUES (gen_random_uuid(), 'admin@sluck.example.com', crypt('password', gen_salt('bf', 14)), '8648d50b-baa1-4929-be0f-bc7238f685ab', true);
 
--- create company1's session signing keys
+-- create Sluck's session signing keys
 insert into session_signing_keys (id, project_id, public_key, private_key_cipher_text, expire_time)
 values (
            gen_random_uuid(),
@@ -72,31 +72,31 @@ values (
            (select now() + interval '1 year')
        );
 
--- Create company2's project
+-- Create Jora Cloud's project
 insert into projects (id, log_in_with_email, log_in_with_password, log_in_with_google, log_in_with_microsoft, display_name, vault_domain, email_send_from_domain, redirect_uri, cookie_domain)
-values ('24ba0dd5-e178-460e-8f7a-f3f72cf6a1e7'::uuid, true, false, false, false, 'Company Two', 'vault.company2.example.com', 'vault.company2.example.com', 'http://company2.example.com', 'company2.example.com');
+values ('24ba0dd5-e178-460e-8f7a-f3f72cf6a1e7'::uuid, true, false, false, false, 'Jora Cloud', 'vault.joracloud.example.com', 'vault.joracloud.example.com', 'http://joracloud.example.com', 'joracloud.example.com');
 
 insert into project_trusted_domains (id, project_id, domain)
 VALUES
     (gen_random_uuid(), '24ba0dd5-e178-460e-8f7a-f3f72cf6a1e7', 'project-269wse1l6u0jnvs8afpq44f6v.tesseral.example.app'),
-    (gen_random_uuid(), '24ba0dd5-e178-460e-8f7a-f3f72cf6a1e7', 'vault.company2.example.com'),
-    (gen_random_uuid(), '24ba0dd5-e178-460e-8f7a-f3f72cf6a1e7', 'company2.example.com');
+    (gen_random_uuid(), '24ba0dd5-e178-460e-8f7a-f3f72cf6a1e7', 'vault.joracloud.example.com'),
+    (gen_random_uuid(), '24ba0dd5-e178-460e-8f7a-f3f72cf6a1e7', 'joracloud.example.com');
 
--- Create company2's project's backing organization
+-- Create Jora Cloud's project's backing organization
 INSERT INTO organizations (id, display_name, project_id, log_in_with_saml, scim_enabled, log_in_with_email)
-VALUES ('8b5972b6-c878-4c6c-a351-9e01da20f776'::uuid, 'project_269wse1l6u0jnvs8afpq44f6v Backing Organization', '56bfa2b3-4f5a-4c68-8fc5-db3bf20731a2', false, false, true);
+VALUES ('8b5972b6-c878-4c6c-a351-9e01da20f776'::uuid, 'Jora Cloud', '24ba0dd5-e178-460e-8f7a-f3f72cf6a1e7', false, false, true);
 
 update projects set organization_id = '8b5972b6-c878-4c6c-a351-9e01da20f776'::uuid where id = '24ba0dd5-e178-460e-8f7a-f3f72cf6a1e7'::uuid;
 
--- Create project UI settings for company2's project
+-- Create project UI settings for Jora Cloud's project
 INSERT INTO project_ui_settings (id, project_id)
   VALUES (gen_random_uuid(), '24ba0dd5-e178-460e-8f7a-f3f72cf6a1e7'::uuid);
 
--- Create a user in company2
+-- Create a user in Jora Cloud
 INSERT INTO users (id, email, password_bcrypt, organization_id, is_owner)
-VALUES (gen_random_uuid(), 'user1@company2.example.com', crypt('password', gen_salt('bf', 14)), '8b5972b6-c878-4c6c-a351-9e01da20f776', true);
+VALUES (gen_random_uuid(), 'admin@joracloud.example.com', crypt('password', gen_salt('bf', 14)), '8b5972b6-c878-4c6c-a351-9e01da20f776', true);
 
--- create company2's session signing keys
+-- create Jora Cloud's session signing keys
 insert into session_signing_keys (id, project_id, public_key, private_key_cipher_text, expire_time)
 values (
            gen_random_uuid(),
@@ -107,30 +107,30 @@ values (
        );
 
 
--- Create company3's project
+-- Create Arctic Web Services' project
 insert into projects (id, log_in_with_email, log_in_with_password, log_in_with_google, log_in_with_microsoft, display_name, vault_domain, email_send_from_domain, redirect_uri, cookie_domain)
-values ('8d274edd-bca0-4bc2-862c-ecd3f22669f0'::uuid, true, false, false, false, 'Company Three', 'project-8cu705zczqtcndc3c1mvgnoxc.tesseral.example.app', 'mail.tesseral.example.app', 'http://app.company3.example.com', 'project-8cu705zczqtcndc3c1mvgnoxc.tesseral.example.app');
+values ('8d274edd-bca0-4bc2-862c-ecd3f22669f0'::uuid, true, false, false, false, 'Arctic Web Services', 'project-8cu705zczqtcndc3c1mvgnoxc.tesseral.example.app', 'mail.tesseral.example.app', 'http://app.arcticws.example.com', 'project-8cu705zczqtcndc3c1mvgnoxc.tesseral.example.app');
 
 insert into project_trusted_domains (id, project_id, domain)
 VALUES
     (gen_random_uuid(), '8d274edd-bca0-4bc2-862c-ecd3f22669f0', 'project-8cu705zczqtcndc3c1mvgnoxc.tesseral.example.app'),
-    (gen_random_uuid(), '8d274edd-bca0-4bc2-862c-ecd3f22669f0', 'app.company3.example.com');
+    (gen_random_uuid(), '8d274edd-bca0-4bc2-862c-ecd3f22669f0', 'app.arcticws.example.com');
 
--- Create company3's project's backing organization
+-- Create Arctic Web Services' project's backing organization
 INSERT INTO organizations (id, display_name, project_id, log_in_with_saml, scim_enabled, log_in_with_email)
-VALUES ('0fbcb562-5f18-40e3-8725-47fcc8209af1'::uuid, 'project_8cu705zczqtcndc3c1mvgnoxc Backing Organization', '8d274edd-bca0-4bc2-862c-ecd3f22669f0', false, false, true);
+VALUES ('0fbcb562-5f18-40e3-8725-47fcc8209af1'::uuid, 'Arctic Web Services', '8d274edd-bca0-4bc2-862c-ecd3f22669f0', false, false, true);
 
 update projects set organization_id = '0fbcb562-5f18-40e3-8725-47fcc8209af1'::uuid where id = '8d274edd-bca0-4bc2-862c-ecd3f22669f0'::uuid;
 
--- Create project UI settings for company3's project
+-- Create project UI settings for Arctic Web Services' project
 INSERT INTO project_ui_settings (id, project_id)
 VALUES (gen_random_uuid(), '8d274edd-bca0-4bc2-862c-ecd3f22669f0'::uuid);
 
--- Create a user in company3
+-- Create a user in Arctic Web Services
 INSERT INTO users (id, email, password_bcrypt, organization_id, is_owner)
-VALUES (gen_random_uuid(), 'user1@company3.example.com', crypt('password', gen_salt('bf', 14)), '8b5972b6-c878-4c6c-a351-9e01da20f776', true);
+VALUES (gen_random_uuid(), 'admin@arcticws.example.com', crypt('password', gen_salt('bf', 14)), '0fbcb562-5f18-40e3-8725-47fcc8209af1', true);
 
--- create company3's session signing keys
+-- create Arctic Web Services' session signing keys
 insert into session_signing_keys (id, project_id, public_key, private_key_cipher_text, expire_time)
 values (
            gen_random_uuid(),

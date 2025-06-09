@@ -1,0 +1,50 @@
+#!/bin/bash
+
+set -e
+
+echo "Checking domains from etc.hosts.example against /etc/hosts..."
+
+# Extract just the domain entries (skip comments and blank lines)
+if ! grep -E "^127\.0\.0\.1" etc.hosts.example > /tmp/tesseral-hosts.tmp 2>/dev/null; then
+    echo "No domains found in etc.hosts.example"
+    exit 0
+fi
+
+# Check if the temp file has content
+if [ ! -s /tmp/tesseral-hosts.tmp ]; then
+    echo "No domains found in etc.hosts.example"
+    rm -f /tmp/tesseral-hosts.tmp
+    exit 0
+fi
+
+# Create a file for new domains only
+> /tmp/tesseral-hosts-new.tmp
+
+# Check each domain to see if it already exists
+while IFS= read -r line; do
+    domain=$(echo "$line" | awk '{print $2}')
+    if ! grep -q "$domain" /etc/hosts 2>/dev/null; then
+        echo "$line" >> /tmp/tesseral-hosts-new.tmp
+    fi
+done < /tmp/tesseral-hosts.tmp
+
+# If we have new domains to add
+if [ -s /tmp/tesseral-hosts-new.tmp ]; then
+    echo "The following NEW domains will be added to /etc/hosts:"
+    cat /tmp/tesseral-hosts-new.tmp
+    echo ""
+    
+    # Add the comment header if it doesn't exist
+    if ! grep -q "# Tesseral Local Dev Entries" /etc/hosts 2>/dev/null; then
+        echo "# Tesseral Local Dev Entries" | sudo tee -a /etc/hosts > /dev/null
+    fi
+    
+    # Add the new domains
+    sudo tee -a /etc/hosts < /tmp/tesseral-hosts-new.tmp > /dev/null
+    echo "New domains successfully added to /etc/hosts"
+else
+    echo "All domains already exist in /etc/hosts - no changes needed"
+fi
+
+# Cleanup
+rm -f /tmp/tesseral-hosts.tmp /tmp/tesseral-hosts-new.tmp
